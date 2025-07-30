@@ -34,7 +34,7 @@ class DriveScanner {
         this.lastProgressUpdate = 0;
     }
     
-    // Main entry point for drive/folder scanning
+    // Main entry point for drive/folder scanning - FIXED PERMISSION ISSUE
     async selectAndScan(options = {}) {
         if (!Utils.supportsFileSystemAccess()) {
             throw new Error('File System Access API not supported. Please use Chrome 86+ or Edge 86+');
@@ -43,9 +43,9 @@ class DriveScanner {
         this.options = { ...this.options, ...options };
         
         try {
-            // Request directory access with read/write permissions
+            // Start with READ-ONLY access for scanning - NO EXTRA DIALOG
             const directoryHandle = await window.showDirectoryPicker({
-                mode: 'readwrite',
+                mode: 'read', // Changed from 'readwrite' to 'read'
                 startIn: 'desktop'
             });
             
@@ -312,7 +312,7 @@ class DriveScanner {
         }
         
         try {
-            // Test write permission
+            // Test write permission (don't request, just query)
             const testPermission = await handle.queryPermission({ mode: 'readwrite' });
             permissions.writable = testPermission === 'granted';
         } catch (e) {
