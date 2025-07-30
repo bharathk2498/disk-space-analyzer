@@ -20,6 +20,10 @@ class DriveAnalyzerApp {
         this.currentFilter = 'all';
         this.searchTerm = '';
         
+        // Delete operations state
+        this.pendingDeleteItem = null;
+        this.pendingDeleteItems = null;
+        
         // Settings
         this.settings = {
             theme: 'light',
@@ -278,6 +282,43 @@ class DriveAnalyzerApp {
         }
     }
     
+    // Update delete progress
+    updateDeleteProgress(progress) {
+        const loadingTitle = document.getElementById('loadingTitle');
+        const loadingStatus = document.getElementById('loadingStatus');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        
+        loadingTitle.textContent = 'Deleting Items...';
+        loadingStatus.textContent = progress.message || 'Processing deletion...';
+        
+        if (progress.total > 0) {
+            const percentage = Math.round((progress.processed / progress.total) * 100);
+            progressFill.style.width = `${percentage}%`;
+            progressText.textContent = `${percentage}% (${progress.processed}/${progress.total})`;
+        }
+    }
+    
+    // Handle delete completion
+    handleDeleteComplete(result) {
+        this.hideLoading();
+        
+        if (result.success > 0) {
+            this.showNotification(`Successfully deleted ${result.success} items`, 'success');
+        }
+        if (result.failed > 0) {
+            this.showNotification(`Failed to delete ${result.failed} items`, 'warning');
+            console.warn('Delete errors:', result.errors);
+        }
+    }
+    
+    // Handle delete error
+    handleDeleteError(error) {
+        this.hideLoading();
+        console.error('Delete error:', error);
+        this.showNotification(`Delete failed: ${error.message}`, 'error');
+    }
+    
     // Update main UI after scan
     updateUI() {
         if (!this.currentData) return;
@@ -389,9 +430,9 @@ class DriveAnalyzerApp {
                 </div>
                 <div class="item-size">${Utils.formatBytes(item.size)}</div>
                 <div class="item-actions">
-                    <button class="btn btn-sm btn-danger" onclick="app.deleteItem('${item.path}')">
+                    ${item.handle ? `<button class="btn btn-sm btn-danger" onclick="app.deleteItem('${item.path}')">
                         <i class="fas fa-trash"></i>
-                    </button>
+                    </button>` : ''}
                 </div>
             </div>
         `).join('');
@@ -735,6 +776,252 @@ class DriveAnalyzerApp {
         this.updateSecurityAnalysis();
     }
     
+    // ENHANCED DELETE CONFIRMATION WITH SMART PERMISSION HANDLING
+    async showDeleteConfirmation(itemOrPath) {
+        const item = typeof itemOrPath === 'string' ? this.findItemByPath(itemOrPath) : itemOrPath;
+        if (!item) return;
+        
+        const modal = document.getElementById('deleteModal');
+        const message = document.getElementById('deleteMessage');
+        const preview = document.getElementById('deletePreview');
+        
+        // Check if we have write permissions
+        let hasWritePermission = false;
+        if (item.handle) {
+            try {
+                const permission = await item.handle.queryPermission({ mode: 'readwrite' });
+                hasWritePermission = permission === 'granted';
+            } catch (error) {
+                console.warn('Permission check failed:', error);
+            }
+        }
+        
+        message.textContent = `Are you sure you want to permanently delete "${item.name}"?`;
+        
+        let warningContent = '';
+        
+        // Add permission warning if needed
+        if (!hasWritePermission && item.handle) {
+            warningContent += `
+                <div class="permission-notice" style="background: #e0f2fe; border: 1px solid #0891b2; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+                    <h4 style="color: #0891b2; margin: 0 0 8px 0; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-key"></i> Permission Required
+                    </h4>
+                    <p style="margin: 0; color: #0c4a6e; font-size: 14px;">Additional permission will be requested to delete this item securely.</p>
+                </div>
+            `;
+        }
+        
+        // Add validation warnings
+        const validation = this.fileManager.validateItemForDeletion(item);
+        if (validation.warnings.length > 0) {
+            warningContent += `
+                <div class="delete-warnings" style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 12px;">
+                    <h4 style="color: #92400e; margin: 0 0 8px 0; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-exclamation-triangle"></i> Warnings:
+                    </h4>
+                    ${validation.warnings.map(warning => `<p style="margin: 4px 0; color: #92400e; font-size: 14px;">• ${warning}</p>`).join('')}
+                </div>
+            `;
+        }
+        
+        preview.innerHTML = warningContent;
+        modal.classList.add('active');
+        this.pendingDeleteItem = item;
+    }
+    
+    // BULK DELETE CONFIRMATION
+    async showBulkDeleteConfirmation() {
+        const selectedItems = this.fileManager.getSelectedItems();
+        if (selectedItems.length === 0) {
+            this.showNotification('No items selected for deletion', 'warning');
+            return;
+        }
+        
+        const modal = document.getElementById('deleteModal');
+        const message = document.getElementById('deleteMessage');
+        const preview = document.getElementById('deletePreview');
+        
+        const totalSize = this.fileManager.getSelectedSize();
+        message.textContent = `Are you sure you want to permanently delete ${selectedItems.length} selected items (${Utils.formatBytes(totalSize)})?`;
+        
+        // Check permissions for selected items
+        const itemsNeedingPermission = [];
+        for (const item of selectedItems) {
+            if (item.handle) {
+                try {
+                    const permission = await item.handle.queryPermission({ mode: 'readwrite' });
+                    if (permission !== 'granted') {
+                        itemsNeedingPermission.push(item);
+                    }
+                } catch (error) {
+                    itemsNeedingPermission.push(item);
+                }
+            }
+        }
+        
+        let warningContent = '';
+        
+        if (itemsNeedingPermission.length > 0) {
+            warningContent += `
+                <div class="permission-notice" style="background: #e0f2fe; border: 1px solid #0891b2; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+                    <h4 style="color: #0891b2; margin: 0 0 8px 0; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-key"></i> Permissions Required
+                    </h4>
+                    <p style="margin: 0; color: #0c4a6e; font-size: 14px;">Additional permissions will be requested for ${itemsNeedingPermission.length} items that require write access.</p>
+                </div>
+            `;
+        }
+        
+        // Validate all items
+        const validation = this.fileManager.validateItemsForDeletion(selectedItems);
+        if (validation.warnings.length > 0 || validation.highRisk.length > 0) {
+            warningContent += `
+                <div class="delete-warnings" style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 12px;">
+                    <h4 style="color: #92400e; margin: 0 0 8px 0; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-exclamation-triangle"></i> Bulk Delete Warnings:
+                    </h4>
+                    <p style="margin: 4px 0; color: #92400e; font-size: 14px;">• ${validation.safe.length} items safe to delete</p>
+                    ${validation.warnings.length > 0 ? `<p style="margin: 4px 0; color: #92400e; font-size: 14px;">• ${validation.warnings.length} items with warnings</p>` : ''}
+                    ${validation.highRisk.length > 0 ? `<p style="margin: 4px 0; color: #92400e; font-size: 14px;">• ${validation.highRisk.length} high-risk items</p>` : ''}
+                </div>
+            `;
+        }
+        
+        preview.innerHTML = warningContent;
+        modal.classList.add('active');
+        this.pendingDeleteItems = selectedItems;
+    }
+    
+    // ENHANCED EXECUTE DELETE
+    async executeDelete() {
+        try {
+            this.closeDeleteModal();
+            
+            if (this.pendingDeleteItem) {
+                this.showLoading('Deleting item...');
+                await this.fileManager.deleteItem(this.pendingDeleteItem);
+                this.showNotification(`Successfully deleted ${this.pendingDeleteItem.name}`, 'success');
+                this.pendingDeleteItem = null;
+            } else if (this.pendingDeleteItems) {
+                this.showLoading('Deleting selected items...');
+                const result = await this.fileManager.deleteItems(this.pendingDeleteItems);
+                
+                if (result.success > 0) {
+                    this.showNotification(`Successfully deleted ${result.success} items`, 'success');
+                }
+                if (result.failed > 0) {
+                    this.showNotification(`Failed to delete ${result.failed} items`, 'warning');
+                }
+                this.pendingDeleteItems = null;
+            }
+            
+            this.hideLoading();
+            
+            // Refresh the scan
+            await this.refreshScan();
+            
+        } catch (error) {
+            this.hideLoading();
+            this.handleDeleteError(error);
+            this.pendingDeleteItem = null;
+            this.pendingDeleteItems = null;
+        }
+    }
+    
+    // Handle search input
+    handleSearch(searchTerm) {
+        this.searchTerm = searchTerm;
+        this.currentPage = 1; // Reset to first page
+        this.updateCurrentView();
+    }
+    
+    // Handle filter change
+    handleFilter(filterType) {
+        this.currentFilter = filterType;
+        this.currentPage = 1; // Reset to first page
+        this.updateCurrentView();
+    }
+    
+    // Handle table sorting
+    handleTableSort(field) {
+        if (this.currentSort.field === field) {
+            this.currentSort.direction = this.currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.currentSort.field = field;
+            this.currentSort.direction = 'desc'; // Default to descending
+        }
+        this.updateCurrentView();
+    }
+    
+    // Pagination methods
+    previousPage() {
+        if (this.currentPage > 1) {
+            this.currentPage--;
+            this.updateCurrentView();
+        }
+    }
+    
+    nextPage() {
+        this.currentPage++;
+        this.updateCurrentView();
+    }
+    
+    // Select all visible items
+    selectAllVisible() {
+        if (this.currentView === 'table') {
+            const files = this.scanner.getFlatFileList();
+            const filteredFiles = this.applyFiltersAndSearch(files);
+            const paginatedFiles = this.applyPagination(filteredFiles);
+            paginatedFiles.forEach(file => this.fileManager.selectItem(file));
+        } else if (this.currentView === 'tree') {
+            // Select visible tree items
+            const visibleItems = document.querySelectorAll('.tree-item:not([style*="display: none"])');
+            visibleItems.forEach(element => {
+                const path = element.dataset.path;
+                const item = this.findItemByPath(path);
+                if (item) this.fileManager.selectItem(item);
+            });
+        }
+    }
+    
+    // Update pagination info
+    updatePaginationInfo(totalItems) {
+        const totalPages = Math.ceil(totalItems / this.itemsPerPage);
+        const start = (this.currentPage - 1) * this.itemsPerPage + 1;
+        const end = Math.min(this.currentPage * this.itemsPerPage, totalItems);
+        
+        const tableInfo = document.getElementById('tableInfo');
+        const pageInfo = document.getElementById('pageInfo');
+        const prevBtn = document.getElementById('prevPage');
+        const nextBtn = document.getElementById('nextPage');
+        
+        if (tableInfo) {
+            tableInfo.textContent = `${Utils.formatNumber(totalItems)} items`;
+        }
+        
+        if (pageInfo) {
+            pageInfo.textContent = `Page ${this.currentPage} of ${totalPages}`;
+        }
+        
+        if (prevBtn) {
+            prevBtn.disabled = this.currentPage <= 1;
+        }
+        
+        if (nextBtn) {
+            nextBtn.disabled = this.currentPage >= totalPages;
+        }
+    }
+    
+    // Update navigation state
+    updateNavigationState() {
+        // Enable/disable buttons based on current state
+        const hasData = !!this.currentData;
+        
+        document.getElementById('refreshScan')?.toggleAttribute('disabled', !hasData);
+        document.getElementById('exportData')?.toggleAttribute('disabled', !hasData);
+    }
+    
     // Settings management
     loadSettings() {
         const saved = Utils.storage.get('driveAnalyzerSettings', {});
@@ -761,60 +1048,89 @@ class DriveAnalyzerApp {
         }
     }
     
+    // Export functionality
+    showExportModal() {
+        if (!this.currentData) {
+            this.showNotification('No data to export. Please scan a folder first.', 'warning');
+            return;
+        }
+        
+        const modal = document.getElementById('exportModal');
+        modal.classList.add('active');
+    }
+    
+    executeExport() {
+        const format = document.querySelector('input[name="exportFormat"]:checked')?.value || 'csv';
+        const files = this.scanner.getFlatFileList();
+        
+        const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+        const filename = `drive-analysis-${timestamp}.${format}`;
+        
+        try {
+            switch (format) {
+                case 'csv':
+                    Utils.exportToCSV(files, filename);
+                    break;
+                case 'json':
+                    Utils.exportToJSON(this.currentData, filename.replace('.csv', '.json'));
+                    break;
+                case 'excel':
+                    Utils.exportToExcel(files, filename.replace('.csv', '.xlsx'));
+                    break;
+                default:
+                    throw new Error(`Unsupported format: ${format}`);
+            }
+            
+            this.showNotification(`Data exported as ${filename}`, 'success');
+            this.closeModal(document.getElementById('exportModal'));
+            
+        } catch (error) {
+            this.showNotification(`Export failed: ${error.message}`, 'error');
+        }
+    }
+    
+    // Cleanup methods for overview suggestions
+    cleanupTempFiles() {
+        const suggestions = this.scanner.getCleanupSuggestions();
+        if (suggestions.tempFiles.length > 0) {
+            // Select temp files and show bulk delete
+            suggestions.tempFiles.forEach(file => this.fileManager.selectItem(file));
+            this.showBulkDeleteConfirmation();
+        } else {
+            this.showNotification('No temporary files found', 'info');
+        }
+    }
+    
+    showLargeFiles() {
+        this.currentFilter = 'huge';
+        this.switchView('table');
+        this.showNotification('Showing files larger than 1GB', 'info');
+    }
+    
+    showOldFiles() {
+        // Switch to table view and apply old files filter
+        this.switchView('table');
+        this.showNotification('Showing files older than 1 year', 'info');
+    }
+    
+    showDuplicates() {
+        this.switchView('analysis');
+        this.showNotification('Showing duplicate file analysis', 'info');
+    }
+    
+    showItemProperties(path) {
+        const item = this.findItemByPath(path);
+        if (item) {
+            // Show properties modal or panel
+            this.showNotification(`Properties for: ${item.name}`, 'info');
+        }
+    }
+    
     // Global methods for onclick handlers
     deleteItem(path) {
         const item = this.findItemByPath(path);
         if (item) {
             this.showDeleteConfirmation(item);
-        }
-    }
-    
-    showDeleteConfirmation(itemOrPath) {
-        const item = typeof itemOrPath === 'string' ? this.findItemByPath(itemOrPath) : itemOrPath;
-        if (!item) return;
-        
-        const modal = document.getElementById('deleteModal');
-        const message = document.getElementById('deleteMessage');
-        const preview = document.getElementById('deletePreview');
-        
-        message.textContent = `Are you sure you want to permanently delete "${item.name}"?`;
-        
-        const validation = this.fileManager.validateItemForDeletion(item);
-        if (validation.warnings.length > 0) {
-            preview.innerHTML = `
-                <div class="delete-warnings">
-                    <h4><i class="fas fa-exclamation-triangle"></i> Warnings:</h4>
-                    ${validation.warnings.map(warning => `<p>• ${warning}</p>`).join('')}
-                </div>
-            `;
-        } else {
-            preview.innerHTML = '';
-        }
-        
-        modal.classList.add('active');
-        this.pendingDeleteItem = item;
-    }
-    
-    async executeDelete() {
-        if (!this.pendingDeleteItem) return;
-        
-        try {
-            this.closeDeleteModal();
-            this.showLoading('Deleting item...');
-            
-            await this.fileManager.deleteItem(this.pendingDeleteItem);
-            
-            this.hideLoading();
-            this.showNotification(`Successfully deleted ${this.pendingDeleteItem.name}`, 'success');
-            
-            // Refresh the scan
-            await this.refreshScan();
-            
-        } catch (error) {
-            this.hideLoading();
-            this.handleDeleteError(error);
-        } finally {
-            this.pendingDeleteItem = null;
         }
     }
     
@@ -824,6 +1140,93 @@ class DriveAnalyzerApp {
         
         const allItems = [this.currentData.rootDirectory, ...this.scanner.getFlatFileList()];
         return allItems.find(item => item.path === path);
+    }
+    
+    // Selection changed handler
+    handleSelectionChanged(detail) {
+        // Update UI elements based on selection
+        const bulkDeleteBtn = document.getElementById('bulkDelete');
+        if (bulkDeleteBtn) {
+            bulkDeleteBtn.disabled = detail.count === 0;
+            bulkDeleteBtn.textContent = detail.count > 0 ? 
+                `Delete Selected (${detail.count})` : 'Bulk Delete';
+        }
+    }
+    
+    // Update analysis view components
+    updateCleanupAnalysis(suggestions) {
+        const container = document.getElementById('cleanupAnalysis');
+        if (!container) return;
+        
+        const totalSavings = suggestions.tempFiles.reduce((sum, f) => sum + f.size, 0) +
+                           suggestions.oldFiles.reduce((sum, f) => sum + f.size, 0);
+        
+        container.innerHTML = `
+            <div class="analysis-summary">
+                <h4>Potential Space Savings: ${Utils.formatBytes(totalSavings)}</h4>
+                <div class="cleanup-categories">
+                    <div class="cleanup-category">
+                        <span class="category-name">Temporary Files</span>
+                        <span class="category-count">${suggestions.tempFiles.length} files</span>
+                        <span class="category-size">${Utils.formatBytes(suggestions.tempFiles.reduce((sum, f) => sum + f.size, 0))}</span>
+                    </div>
+                    <div class="cleanup-category">
+                        <span class="category-name">Old Files</span>
+                        <span class="category-count">${suggestions.oldFiles.length} files</span>
+                        <span class="category-size">${Utils.formatBytes(suggestions.oldFiles.reduce((sum, f) => sum + f.size, 0))}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    updateDuplicateAnalysis(duplicates) {
+        const container = document.getElementById('duplicateAnalysis');
+        if (!container) return;
+        
+        const duplicateGroups = Object.entries(duplicates);
+        const totalDuplicateSize = duplicateGroups.reduce((sum, [, files]) => 
+            sum + (files.length - 1) * files[0].size, 0);
+        
+        container.innerHTML = `
+            <div class="duplicate-summary">
+                <h4>Duplicate Groups: ${duplicateGroups.length}</h4>
+                <p>Potential savings: ${Utils.formatBytes(totalDuplicateSize)}</p>
+                <div class="duplicate-groups">
+                    ${duplicateGroups.slice(0, 5).map(([key, files]) => `
+                        <div class="duplicate-group">
+                            <span class="duplicate-name">${files[0].name}</span>
+                            <span class="duplicate-count">${files.length} copies</span>
+                            <span class="duplicate-size">${Utils.formatBytes(files[0].size)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    updateTrendAnalysis() {
+        const container = document.getElementById('trendAnalysis');
+        if (!container) return;
+        
+        container.innerHTML = `
+            <div class="trend-summary">
+                <h4>File Activity Trends</h4>
+                <p>Analysis of file modification patterns and growth trends would appear here.</p>
+            </div>
+        `;
+    }
+    
+    updateSecurityAnalysis() {
+        const container = document.getElementById('securityAnalysis');
+        if (!container) return;
+        
+        container.innerHTML = `
+            <div class="security-summary">
+                <h4>Security Assessment</h4>
+                <p>Security risk analysis and recommendations would appear here.</p>
+            </div>
+        `;
     }
     
     // Notification system
@@ -893,6 +1296,7 @@ class DriveAnalyzerApp {
     closeDeleteModal() {
         this.closeModal(document.getElementById('deleteModal'));
         this.pendingDeleteItem = null;
+        this.pendingDeleteItems = null;
     }
     
     // Keyboard shortcuts
