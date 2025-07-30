@@ -55,20 +55,30 @@ class FileManager {
             .reduce((total, item) => total + (item.size || 0), 0);
     }
     
-    // Delete operations
+    // ENHANCED DELETE WITH SMART PERMISSION HANDLING
     async deleteItem(item) {
         return this.deleteItems([item]);
     }
-    
+
     async deleteItems(items) {
         if (!items || items.length === 0) {
             throw new Error('No items to delete');
         }
         
-        // Validate items have handles
+        // Check if we need to upgrade permissions
         const validItems = items.filter(item => item.handle);
         if (validItems.length === 0) {
             throw new Error('No valid items to delete (missing file handles)');
+        }
+        
+        // Request write permissions only when needed
+        try {
+            const hasWritePermissions = await this.ensureWritePermissions(validItems);
+            if (!hasWritePermissions) {
+                throw new Error('Write permissions required for deletion. Please grant access when prompted.');
+            }
+        } catch (error) {
+            throw new Error('Unable to get write permissions: ' + error.message);
         }
         
         const operation = {
@@ -151,6 +161,31 @@ class FileManager {
                 this.onError(error);
             }
             throw error;
+        }
+    }
+    
+    // NEW: Smart permission handling - only request when needed
+    async ensureWritePermissions(items) {
+        try {
+            // Check if any item needs write permission upgrade
+            for (const item of items) {
+                if (!item.handle) continue;
+                
+                // Check current permission
+                const permission = await item.handle.queryPermission({ mode: 'readwrite' });
+                
+                if (permission !== 'granted') {
+                    // Request write permission
+                    const newPermission = await item.handle.requestPermission({ mode: 'readwrite' });
+                    if (newPermission !== 'granted') {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        } catch (error) {
+            console.warn('Permission upgrade failed:', error);
+            return false;
         }
     }
     
