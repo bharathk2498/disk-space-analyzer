@@ -3,376 +3,256 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Drive & Disk Analyzer</title>
-    <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/themes.css">
-    <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="assets/icons.css">
+    <title>Drive Analyzer Pro - Enterprise Disk Space Management</title>
+    <link rel="stylesheet" href="css/landing.css">
+    <link rel="stylesheet" href="css/animations.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💽</text></svg>">
 </head>
 <body>
-    <div id="app">
-        <!-- Header -->
-        <header class="header">
-            <div class="container">
-                <div class="header-content">
-                    <h1><i class="fas fa-hdd"></i> Advanced Drive Analyzer</h1>
-                    <p>Complete disk space analysis for Windows & Linux systems</p>
-                    
-                    <div class="scan-controls">
-                        <button id="scanDrive" class="btn btn-primary btn-large">
-                            <i class="fas fa-search"></i> Scan Drive/Folder
-                        </button>
-                        <button id="scanMultiple" class="btn btn-secondary">
-                            <i class="fas fa-layer-group"></i> Multiple Locations
-                        </button>
-                    </div>
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <div class="brand-icon">
+                    <i class="fas fa-hdd"></i>
                 </div>
+                <span class="brand-text">Drive Analyzer Pro</span>
+                <span class="enterprise-badge">Enterprise</span>
             </div>
-        </header>
-
-        <!-- Quick Stats Bar -->
-        <div class="stats-bar">
-            <div class="container">
-                <div class="stats-grid">
-                    <div class="stat-item">
-                        <i class="fas fa-folder-open"></i>
-                        <div>
-                            <span class="stat-label">Current Path</span>
-                            <span id="currentPath" class="stat-value">No location selected</span>
-                        </div>
-                    </div>
-                    <div class="stat-item">
-                        <i class="fas fa-files-o"></i>
-                        <div>
-                            <span class="stat-label">Total Items</span>
-                            <span id="totalItems" class="stat-value">0</span>
-                        </div>
-                    </div>
-                    <div class="stat-item">
-                        <i class="fas fa-hdd"></i>
-                        <div>
-                            <span class="stat-label">Total Size</span>
-                            <span id="totalSize" class="stat-value">0 B</span>
-                        </div>
-                    </div>
-                    <div class="stat-item">
-                        <i class="fas fa-clock"></i>
-                        <div>
-                            <span class="stat-label">Scan Time</span>
-                            <span id="scanTime" class="stat-value">--</span>
-                        </div>
-                    </div>
-                    <div class="stat-item">
-                        <i class="fas fa-trash"></i>
-                        <div>
-                            <span class="stat-label">Can Delete</span>
-                            <span id="deletableItems" class="stat-value">0</span>
-                        </div>
-                    </div>
-                </div>
+            <div class="nav-menu" id="navMenu">
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#enterprise" class="nav-link">Enterprise</a>
+                <a href="#security" class="nav-link">Security</a>
+                <a href="#pricing" class="nav-link">Pricing</a>
+                <button class="btn btn-nav-primary" onclick="launchApp()">
+                    <i class="fas fa-rocket"></i>
+                    <span>Launch App</span>
+                </button>
+            </div>
+            <div class="mobile-menu-btn" id="mobileMenuBtn">
+                <span></span>
+                <span></span>
+                <span></span>
             </div>
         </div>
+    </nav>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <div class="container">
-                <!-- Controls Panel -->
-                <div class="controls-panel">
-                    <div class="view-tabs">
-                        <button class="tab-btn active" data-view="overview">
-                            <i class="fas fa-tachometer-alt"></i> Overview
-                        </button>
-                        <button class="tab-btn" data-view="tree">
-                            <i class="fas fa-sitemap"></i> Tree View
-                        </button>
-                        <button class="tab-btn" data-view="table">
-                            <i class="fas fa-table"></i> Table View
-                        </button>
-                        <button class="tab-btn" data-view="visual">
-                            <i class="fas fa-chart-pie"></i> Visual Charts
-                        </button>
-                        <button class="tab-btn" data-view="analysis">
-                            <i class="fas fa-analytics"></i> Analysis
-                        </button>
-                    </div>
-                    
-                    <div class="control-actions">
-                        <div class="search-group">
-                            <input type="text" id="globalSearch" placeholder="Search files and folders...">
-                            <button id="searchBtn" class="btn btn-icon">
-                                <i class="fas fa-search"></i>
-                            </button>
-                        </div>
-                        
-                        <div class="filter-group">
-                            <select id="filterType">
-                                <option value="all">All Files</option>
-                                <option value="large">Large Files (>100MB)</option>
-                                <option value="huge">Huge Files (>1GB)</option>
-                                <option value="images">Images</option>
-                                <option value="videos">Videos</option>
-                                <option value="documents">Documents</option>
-                                <option value="archives">Archives</option>
-                                <option value="temp">Temp Files</option>
-                            </select>
-                        </div>
-                        
-                        <div class="action-group">
-                            <button id="refreshScan" class="btn btn-secondary">
-                                <i class="fas fa-sync"></i> Refresh
-                            </button>
-                            <button id="exportData" class="btn btn-secondary">
-                                <i class="fas fa-download"></i> Export
-                            </button>
-                            <button id="bulkDelete" class="btn btn-danger">
-                                <i class="fas fa-trash-alt"></i> Bulk Delete
-                            </button>
-                        </div>
-                        
-                        <div class="theme-selector">
-                            <select id="themeSelect">
-                                <option value="light">Light Theme</option>
-                                <option value="dark">Dark Theme</option>
-                                <option value="blue">Blue Theme</option>
-                                <option value="green">Green Theme</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Content Views -->
-                <div class="content-container">
-                    <!-- Overview Panel -->
-                    <div id="overviewView" class="view-panel active">
-                        <div class="overview-grid">
-                            <div class="overview-card">
-                                <h3><i class="fas fa-chart-pie"></i> Space Distribution</h3>
-                                <div class="chart-container">
-                                    <canvas id="distributionChart"></canvas>
-                                </div>
-                            </div>
-                            
-                            <div class="overview-card">
-                                <h3><i class="fas fa-list-ol"></i> Largest Items</h3>
-                                <div id="largestItems" class="largest-items"></div>
-                            </div>
-                            
-                            <div class="overview-card">
-                                <h3><i class="fas fa-file-alt"></i> File Types</h3>
-                                <div id="fileTypes" class="file-types"></div>
-                            </div>
-                            
-                            <div class="overview-card">
-                                <h3><i class="fas fa-exclamation-triangle"></i> Cleanup Suggestions</h3>
-                                <div id="cleanupSuggestions" class="cleanup-suggestions"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Tree View -->
-                    <div id="treeView" class="view-panel">
-                        <div class="tree-controls">
-                            <div class="tree-actions">
-                                <button id="expandAll" class="btn btn-sm">Expand All</button>
-                                <button id="collapseAll" class="btn btn-sm">Collapse All</button>
-                                <button id="showHidden" class="btn btn-sm">Show Hidden</button>
-                            </div>
-                            <div class="tree-sort">
-                                <label>Sort by:</label>
-                                <select id="treeSortBy">
-                                    <option value="size">Size (Largest First)</option>
-                                    <option value="name">Name (A-Z)</option>
-                                    <option value="date">Date Modified</option>
-                                    <option value="type">File Type</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div id="treeContainer" class="tree-container">
-                            <div class="empty-state">
-                                <i class="fas fa-folder-open"></i>
-                                <h3>No data to display</h3>
-                                <p>Scan a drive or folder to see the tree structure</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Table View -->
-                    <div id="tableView" class="view-panel">
-                        <div class="table-controls">
-                            <div class="table-actions">
-                                <button id="selectAll" class="btn btn-sm">Select All</button>
-                                <button id="selectNone" class="btn btn-sm">Select None</button>
-                                <button id="deleteSelected" class="btn btn-danger btn-sm">Delete Selected</button>
-                            </div>
-                            <div class="table-pagination">
-                                <span id="tableInfo">0 items</span>
-                                <div class="pagination-controls">
-                                    <button id="prevPage" class="btn btn-sm">Previous</button>
-                                    <span id="pageInfo">Page 1 of 1</span>
-                                    <button id="nextPage" class="btn btn-sm">Next</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="table-container">
-                            <table id="filesTable" class="files-table">
-                                <thead>
-                                    <tr>
-                                        <th><input type="checkbox" id="selectAllCheck"></th>
-                                        <th class="sortable" data-sort="name">
-                                            Name <i class="fas fa-sort"></i>
-                                        </th>
-                                        <th class="sortable" data-sort="size">
-                                            Size <i class="fas fa-sort"></i>
-                                        </th>
-                                        <th class="sortable" data-sort="type">
-                                            Type <i class="fas fa-sort"></i>
-                                        </th>
-                                        <th class="sortable" data-sort="modified">
-                                            Modified <i class="fas fa-sort"></i>
-                                        </th>
-                                        <th class="sortable" data-sort="path">
-                                            Location <i class="fas fa-sort"></i>
-                                        </th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="filesTableBody">
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Visual Charts -->
-                    <div id="visualView" class="view-panel">
-                        <div class="charts-grid">
-                            <div class="chart-card">
-                                <h3>Space Usage by File Type</h3>
-                                <canvas id="typeChart"></canvas>
-                            </div>
-                            <div class="chart-card">
-                                <h3>File Size Distribution</h3>
-                                <canvas id="sizeChart"></canvas>
-                            </div>
-                            <div class="chart-card">
-                                <h3>Directory Tree Map</h3>
-                                <div id="treeMap" class="treemap-container"></div>
-                            </div>
-                            <div class="chart-card">
-                                <h3>Timeline Analysis</h3>
-                                <canvas id="timelineChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Analysis View -->
-                    <div id="analysisView" class="view-panel">
-                        <div class="analysis-grid">
-                            <div class="analysis-card">
-                                <h3><i class="fas fa-broom"></i> Cleanup Opportunities</h3>
-                                <div id="cleanupAnalysis" class="analysis-content"></div>
-                            </div>
-                            <div class="analysis-card">
-                                <h3><i class="fas fa-copy"></i> Duplicate Files</h3>
-                                <div id="duplicateAnalysis" class="analysis-content"></div>
-                            </div>
-                            <div class="analysis-card">
-                                <h3><i class="fas fa-chart-line"></i> Growth Trends</h3>
-                                <div id="trendAnalysis" class="analysis-content"></div>
-                            </div>
-                            <div class="analysis-card">
-                                <h3><i class="fas fa-shield-alt"></i> Security Issues</h3>
-                                <div id="securityAnalysis" class="analysis-content"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
-
-        <!-- Loading Overlay -->
-        <div id="loadingOverlay" class="loading-overlay">
-            <div class="loading-content">
-                <div class="loading-spinner"></div>
-                <h3 id="loadingTitle">Scanning Drive...</h3>
-                <p id="loadingStatus">Initializing scan...</p>
-                <div class="progress-container">
-                    <div class="progress-bar">
-                        <div id="progressFill" class="progress-fill"></div>
-                    </div>
-                    <div class="progress-stats">
-                        <span id="progressText">0%</span>
-                        <span id="speedText">0 files/sec</span>
-                    </div>
-                </div>
-                <div class="scan-details">
-                    <div>Files: <span id="scanFileCount">0</span></div>
-                    <div>Folders: <span id="scanFolderCount">0</span></div>
-                    <div>Size: <span id="scanSize">0 B</span></div>
-                </div>
-                <button id="cancelScan" class="btn btn-danger btn-sm">Cancel Scan</button>
-            </div>
+    <!-- Hero Section -->
+    <section class="hero" id="hero">
+        <div class="hero-background">
+            <div class="gradient-orb orb-1"></div>
+            <div class="gradient-orb orb-2"></div>
+            <div class="gradient-orb orb-3"></div>
         </div>
-
-        <!-- Delete Confirmation Modal -->
-        <div id="deleteModal" class="modal">
-            <div class="modal-backdrop"></div>
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3><i class="fas fa-exclamation-triangle"></i> Confirm Deletion</h3>
-                    <button id="closeModal" class="modal-close">&times;</button>
+        
+        <div class="hero-container">
+            <div class="hero-content">
+                <div class="hero-badge">
+                    <i class="fas fa-crown"></i>
+                    <span>Revolutionary Enterprise Solution</span>
                 </div>
-                <div class="modal-body">
-                    <p id="deleteMessage">Are you sure you want to delete the selected items?</p>
-                    <div id="deletePreview" class="delete-preview"></div>
-                </div>
-                <div class="modal-footer">
-                    <button id="confirmDelete" class="btn btn-danger">
-                        <i class="fas fa-trash"></i> Delete Permanently
+                
+                <h1 class="hero-title">
+                    <span class="title-line">Transform Your</span>
+                    <span class="title-line gradient-text">Storage Analytics</span>
+                    <span class="title-line">Experience</span>
+                </h1>
+                
+                <p class="hero-subtitle">
+                    Discover the power of next-generation disk space analysis. Our AI-powered platform 
+                    delivers enterprise-grade insights, security, and performance that scales with your business.
+                </p>
+                
+                <div class="hero-actions">
+                    <button class="btn btn-hero-primary" onclick="launchApp()">
+                        <span class="btn-text">
+                            <i class="fas fa-chart-line"></i>
+                            Start Free Analysis
+                        </span>
+                        <div class="btn-glow"></div>
                     </button>
-                    <button id="cancelDelete" class="btn btn-secondary">Cancel</button>
+                    <button class="btn btn-hero-secondary">
+                        <i class="fas fa-play"></i>
+                        <span>Watch Demo</span>
+                    </button>
+                </div>
+                
+                <div class="hero-stats">
+                    <div class="stat-item">
+                        <div class="stat-number">2.5M+</div>
+                        <div class="stat-label">Files Analyzed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">99.9%</div>
+                        <div class="stat-label">Uptime</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">500+</div>
+                        <div class="stat-label">Enterprises</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="hero-visual">
+                <div class="dashboard-mockup">
+                    <div class="mockup-header">
+                        <div class="mockup-controls">
+                            <span class="control red"></span>
+                            <span class="control yellow"></span>
+                            <span class="control green"></span>
+                        </div>
+                        <div class="mockup-title">Drive Analyzer Pro Dashboard</div>
+                    </div>
+                    
+                    <div class="mockup-content">
+                        <div class="mockup-stats">
+                            <div class="mockup-stat">
+                                <div class="stat-icon">
+                                    <i class="fas fa-hdd"></i>
+                                </div>
+                                <div class="stat-details">
+                                    <div class="stat-value">2.4 TB</div>
+                                    <div class="stat-desc">Total Analyzed</div>
+                                </div>
+                            </div>
+                            
+                            <div class="mockup-stat">
+                                <div class="stat-icon">
+                                    <i class="fas fa-files-o"></i>
+                                </div>
+                                <div class="stat-details">
+                                    <div class="stat-value">1.2M</div>
+                                    <div class="stat-desc">Files Scanned</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mockup-chart">
+                            <div class="chart-placeholder">
+                                <div class="chart-segment" style="--percentage: 35%; --color: #8b5cf6;"></div>
+                                <div class="chart-segment" style="--percentage: 25%; --color: #a78bfa;"></div>
+                                <div class="chart-segment" style="--percentage: 20%; --color: #c4b5fd;"></div>
+                                <div class="chart-segment" style="--percentage: 20%; --color: #ddd6fe;"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+    </section>
 
-        <!-- Export Modal -->
-        <div id="exportModal" class="modal">
-            <div class="modal-backdrop"></div>
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3><i class="fas fa-download"></i> Export Data</h3>
-                    <button class="modal-close">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div class="export-options">
-                        <label><input type="radio" name="exportFormat" value="csv" checked> CSV File</label>
-                        <label><input type="radio" name="exportFormat" value="json"> JSON File</label>
-                        <label><input type="radio" name="exportFormat" value="excel"> Excel File</label>
-                        <label><input type="radio" name="exportFormat" value="pdf"> PDF Report</label>
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">
+                    Powerful Features for
+                    <span class="gradient-text">Enterprise Storage</span>
+                </h2>
+                <p class="section-subtitle">
+                    Everything you need for comprehensive disk space management
+                </p>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-search-plus"></i>
                     </div>
-                    <div class="export-filters">
-                        <h4>Include:</h4>
-                        <label><input type="checkbox" checked> File Details</label>
-                        <label><input type="checkbox" checked> Size Information</label>
-                        <label><input type="checkbox"> Full Paths</label>
-                        <label><input type="checkbox"> Modification Dates</label>
-                    </div>
+                    <h3 class="feature-title">Deep Scan Analysis</h3>
+                    <p class="feature-description">
+                        Analyze millions of files across multiple drives with lightning-fast performance.
+                    </p>
                 </div>
-                <div class="modal-footer">
-                    <button id="startExport" class="btn btn-primary">Export</button>
-                    <button class="btn btn-secondary">Cancel</button>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3 class="feature-title">Enterprise Security</h3>
+                    <p class="feature-description">
+                        Military-grade encryption, zero data transmission, complete local processing.
+                    </p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <h3 class="feature-title">Advanced Visualization</h3>
+                    <p class="feature-description">
+                        Interactive charts, treemaps, and dashboards for instant insights.
+                    </p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3 class="feature-title">AI-Powered Insights</h3>
+                    <p class="feature-description">
+                        Smart cleanup suggestions and predictive storage analytics.
+                    </p>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
-    <!-- JavaScript Files -->
-    <script src="js/utils.js"></script>
-    <script src="js/scanner.js"></script>
-    <script src="js/visualizer.js"></script>
-    <script src="js/fileManager.js"></script>
-    <script src="js/app.js"></script>
+    <!-- CTA Section -->
+    <section class="cta">
+        <div class="container">
+            <div class="cta-content">
+                <h2 class="cta-title">Ready to Optimize Your Storage?</h2>
+                <p class="cta-subtitle">Join thousands of enterprises using Drive Analyzer Pro</p>
+                
+                <div class="cta-actions">
+                    <button class="btn btn-cta-primary" onclick="launchApp()">
+                        <i class="fas fa-rocket"></i>
+                        <span>Start Free Analysis</span>
+                    </button>
+                    <button class="btn btn-cta-secondary">
+                        <i class="fas fa-calendar"></i>
+                        <span>Schedule Demo</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <div class="brand">
+                        <i class="fas fa-hdd"></i>
+                        <span>Drive Analyzer Pro</span>
+                    </div>
+                    <p>Enterprise-grade disk space analysis platform.</p>
+                </div>
+                <div class="footer-links">
+                    <div class="link-group">
+                        <h4>Product</h4>
+                        <a href="#features">Features</a>
+                        <a href="#pricing">Pricing</a>
+                        <a href="#security">Security</a>
+                    </div>
+                    <div class="link-group">
+                        <h4>Support</h4>
+                        <a href="#">Documentation</a>
+                        <a href="#">Help Center</a>
+                        <a href="#">Contact</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Drive Analyzer Pro. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/landing.js"></script>
 </body>
 </html>
