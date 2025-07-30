@@ -799,3 +799,76 @@ body {
 .block { display: block !important; }
 .flex { display: flex !important; }
 .inline-flex { display: inline-flex !important; }
+/* Overview Panel Fixes */
+.overview-card {
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-container {
+    flex: 1;
+    position: relative;
+    min-height: 250px;
+}
+
+.largest-items, .file-types, .cleanup-suggestions {
+    min-height: 200px;
+    overflow-y: auto;
+}
+
+.largest-item, .file-type-item, .cleanup-suggestion {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border);
+    gap: 1rem;
+}
+
+.largest-item:hover, .file-type-item:hover, .cleanup-suggestion:hover {
+    background: var(--bg-tertiary);
+}
+
+.item-info, .file-type-info, .suggestion-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.item-name, .type-name, .suggestion-title {
+    font-weight: 500;
+}
+
+.item-size, .type-stats, .suggestion-desc {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+.type-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.suggestion-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Empty state for panels */
+.overview-card:empty::after {
+    content: 'Loading data...';
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--text-muted);
+    font-style: italic;
+}
