@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Disk Space Analyzer</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/themes.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-search"></i> Advanced Disk Analyzer</h1>
+                <p>Sophisticated disk space analysis with safe deletion capabilities</p>
+                <div class="header-controls">
+                    <button id="selectFolder" class="btn btn-primary">
+                        <i class="fas fa-folder-open"></i> Select Folder to Analyze
+                    </button>
+                    <div class="theme-selector">
+                        <label>Theme:</label>
+                        <select id="themeSelect">
+                            <option value="default">Default</option>
+                            <option value="dark">Dark</option>
+                            <option value="neon">Neon</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Status Panel -->
+            <div id="statusPanel" class="status-panel">
+                <div class="status-item">
+                    <i class="fas fa-folder"></i>
+                    <span id="currentPath">No folder selected</span>
+                </div>
+                <div class="status-item">
+                    <i class="fas fa-clock"></i>
+                    <span id="scanTime">--</span>
+                </div>
+                <div class="status-item">
+                    <i class="fas fa-files-o"></i>
+                    <span id="fileCount">0 files</span>
+                </div>
+                <div class="status-item">
+                    <i class="fas fa-hdd"></i>
+                    <span id="totalSize">0 B</span>
+                </div>
+            </div>
+
+            <!-- View Controls -->
+            <div class="view-controls">
+                <div class="view-tabs">
+                    <button class="tab-btn active" data-view="tree">
+                        <i class="fas fa-sitemap"></i> Tree View
+                    </button>
+                    <button class="tab-btn" data-view="chart">
+                        <i class="fas fa-chart-pie"></i> Visual Chart
+                    </button>
+                    <button class="tab-btn" data-view="list">
+                        <i class="fas fa-list"></i> List View
+                    </button>
+                </div>
+                <div class="view-options">
+                    <button id="exportBtn" class="btn btn-secondary">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                    <button id="refreshBtn" class="btn btn-secondary">
+                        <i class="fas fa-refresh"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Content Views -->
+            <div class="content-container">
+                <!-- Tree View -->
+                <div id="treeView" class="view-panel active">
+                    <div class="tree-container">
+                        <div class="tree-header">
+                            <input type="text" id="searchFilter" placeholder="Search files and folders...">
+                            <select id="sortBy">
+                                <option value="size">Sort by Size</option>
+                                <option value="name">Sort by Name</option>
+                                <option value="date">Sort by Date</option>
+                            </select>
+                        </div>
+                        <div id="treeContent" class="tree-content">
+                            <div class="empty-state">
+                                <i class="fas fa-folder-open"></i>
+                                <h3>Select a folder to begin analysis</h3>
+                                <p>Click "Select Folder" to start scanning your disk space</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart View -->
+                <div id="chartView" class="view-panel">
+                    <div class="chart-container">
+                        <canvas id="diskChart"></canvas>
+                    </div>
+                    <div class="chart-legend" id="chartLegend"></div>
+                </div>
+
+                <!-- List View -->
+                <div id="listView" class="view-panel">
+                    <div class="list-container">
+                        <table id="fileTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Size</th>
+                                    <th>Type</th>
+                                    <th>Modified</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fileTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <h3>Scanning Directory...</h3>
+                <p id="loadingStatus">Preparing scan...</p>
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Confirmation Modal -->
+        <div id="deleteModal" class="modal">
+            <div class="modal-content">
+                <h3><i class="fas fa-exclamation-triangle"></i> Confirm Deletion</h3>
+                <p id="deleteMessage">Are you sure you want to delete this item?</p>
+                <div class="modal-actions">
+                    <button id="confirmDelete" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                    <button id="cancelDelete" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="scripts/utils.js"></script>
+    <script src="scripts/scanner.js"></script>
+    <script src="scripts/visualizer.js"></script>
+    <script src="scripts/app.js"></script>
+</body>
+</html>
